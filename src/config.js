@@ -15,17 +15,17 @@ export const SCOUT_QUERY =
 /** Maximum number of companies to fetch per scouting run. */
 export const SCOUT_MAX_RESULTS = 6;
 
-/** Base URL of the local Ollama server. Override with OLLAMA_BASE_URL in .env. */
-export const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://job-hunter-ollama:11434';
+/** Base URL of the groq-ollama service — local model dedicated to boolean triage. */
+export const GROQ_OLLAMA_URL = process.env.GROQ_OLLAMA_URL || 'http://groq-ollama:11434';
 
-/** Local Ollama model used for both triage and analysis. */
-export const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b-instruct';
+/** Base URL of the deepseek-ollama service — local model dedicated to CV analysis. */
+export const DEEPSEEK_OLLAMA_URL = process.env.DEEPSEEK_OLLAMA_URL || 'http://deepseek-ollama:11434';
 
-/** Model used for the boolean triage filter (local Ollama). */
-export const TRIAGE_MODEL = OLLAMA_MODEL;
+/** Specialized model served by groq-ollama for the boolean triage filter. */
+export const TRIAGE_MODEL = process.env.TRIAGE_MODEL || 'ollama-groq';
 
-/** Model used for CV match analysis and pitch generation (local Ollama). */
-export const ANALYSIS_MODEL = OLLAMA_MODEL;
+/** Specialized model served by deepseek-ollama for CV match analysis and pitches. */
+export const ANALYSIS_MODEL = process.env.ANALYSIS_MODEL || 'ollama-deepseek';
 
 /**
  * Delay in milliseconds between consecutive model calls.

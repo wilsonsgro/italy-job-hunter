@@ -39,7 +39,7 @@ async function runHunter() {
   }
 
   console.log('-----------------------------------------------------');
-  console.log('🧠 [STAGE 2] Triage + analysis with local qwen2.5:3b-instruct...');
+  console.log('🧠 [STAGE 2] Triage (groq-ollama) + analysis (deepseek-ollama)...');
 
   const approvedCards = [];
 
@@ -48,7 +48,7 @@ async function runHunter() {
 
     if (passed) {
       console.log(`🔥 [APPROVED] Match found: "${listing.title}"`);
-      console.log('🤖 [STAGE 3] Generating analysis with qwen2.5:3b-instruct...');
+      console.log('🤖 [STAGE 3] Generating analysis with deepseek-ollama...');
       const report = await analizzaConOllama(listing);
       const score = parseMatchScore(report);
 

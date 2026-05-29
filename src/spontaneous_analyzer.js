@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { chatOllama } from './ollama_client.js';
+import { DEEPSEEK_OLLAMA_URL, ANALYSIS_MODEL } from './config.js';
 
 /**
  * Generates a spontaneous application strategy and cold-outreach pitch for a target company.
@@ -47,16 +48,19 @@ export async function analizzaPerCandidaturaSpontanea(azienda) {
   `;
 
   try {
-    const content = await chatOllama(
-      [
+    const content = await chatOllama({
+      baseUrl: DEEPSEEK_OLLAMA_URL,
+      model: ANALYSIS_MODEL,
+      messages: [
         { role: 'system', content: systemPrompt },
         {
           role: 'user',
           content: `Analyze this company for a spontaneous application:\nName/Site: ${azienda.name} (${azienda.url})\nContext: ${azienda.content}`,
         },
       ],
-      { temperature: 0.3, maxTokens: 1000 },
-    );
+      temperature: 0.3,
+      maxTokens: 1000,
+    });
 
     return content || 'Analysis unavailable.';
   } catch (error) {

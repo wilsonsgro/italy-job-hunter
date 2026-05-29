@@ -1,8 +1,9 @@
 import { chatOllama } from './ollama_client.js';
+import { GROQ_OLLAMA_URL, TRIAGE_MODEL } from './config.js';
 
 /**
- * Runs a boolean triage on a single job listing using the local Ollama model.
- * Sends the listing to qwen2.5:3b-instruct, which responds only "SI" or "NO"
+ * Runs a boolean triage on a single job listing using the groq-ollama service.
+ * Sends the listing to the specialized triage model, which responds only "SI" or "NO"
  * based on whether it matches the Italian market and the target tech stack.
  *
  * @param {{ title: string, content: string }} annuncio
@@ -29,14 +30,17 @@ If the listing is NOT valid respond: NO`;
   const userContent = `Title: ${annuncio.title}\nJob listing text: ${annuncio.content}`;
 
   try {
-    const content = await chatOllama(
-      [
+    const content = await chatOllama({
+      baseUrl: GROQ_OLLAMA_URL,
+      model: TRIAGE_MODEL,
+      messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
       ],
       // temperature 0 for deterministic output; only "SI"/"NO" expected
-      { temperature: 0.0, maxTokens: 5 },
-    );
+      temperature: 0.0,
+      maxTokens: 5,
+    });
     return content.trim().toUpperCase().includes('SI');
 
   } catch (error) {
@@ -61,13 +65,16 @@ Respond "NO" if the company is foreign (USA, UK, India, etc.) with no clear Ital
   const userContent = `Company: ${azienda.name}\nURL: ${azienda.url}\nDescription: ${azienda.content}`;
 
   try {
-    const content = await chatOllama(
-      [
+    const content = await chatOllama({
+      baseUrl: GROQ_OLLAMA_URL,
+      model: TRIAGE_MODEL,
+      messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
       ],
-      { temperature: 0.0, maxTokens: 5 },
-    );
+      temperature: 0.0,
+      maxTokens: 5,
+    });
     return content.trim().toUpperCase().includes('SI');
 
   } catch (error) {

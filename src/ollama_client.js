@@ -1,21 +1,26 @@
 import dotenv from 'dotenv';
-import { OLLAMA_BASE_URL, OLLAMA_MODEL } from './config.js';
 dotenv.config();
 
 /**
- * Sends a chat completion request to the local Ollama server.
- * Both the triage filter and the analysis stages run on the same local model.
+ * Sends a chat completion request to a local Ollama service.
+ * The pipeline runs two specialized services — groq-ollama (triage) and
+ * deepseek-ollama (analysis) — so the target endpoint and model are passed per call.
  *
- * @param {Array<{ role: string, content: string }>} messages
- * @param {{ temperature?: number, maxTokens?: number }} [options]
+ * @param {{
+ *   baseUrl: string,
+ *   model: string,
+ *   messages: Array<{ role: string, content: string }>,
+ *   temperature?: number,
+ *   maxTokens?: number,
+ * }} params
  * @returns {Promise<string>} the assistant message content (empty string if none)
  */
-export async function chatOllama(messages, { temperature = 0.3, maxTokens = 1000 } = {}) {
-  const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+export async function chatOllama({ baseUrl, model, messages, temperature = 0.3, maxTokens = 1000 }) {
+  const response = await fetch(`${baseUrl}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: OLLAMA_MODEL,
+      model,
       messages,
       stream: false,
       options: {

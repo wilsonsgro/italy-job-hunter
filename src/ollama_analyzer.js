@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { chatOllama } from './ollama_client.js';
+import { DEEPSEEK_OLLAMA_URL, ANALYSIS_MODEL } from './config.js';
 
 /**
- * Reads the local CV and asks the local Ollama model for a detailed CV-vs-listing match analysis.
+ * Reads the local CV and asks the deepseek-ollama service for a detailed CV-vs-listing match analysis.
  * Returns a Telegram-optimized report with match score, gap analysis, and a recruiter hook.
  *
  * @param {{ title: string, url: string, content: string }} annuncio
@@ -28,14 +29,17 @@ Structure the response EXACTLY like this:
 
     const userContent = `### MY CV:\n${cvContent}\n\n### JOB LISTING:\nTitle: ${annuncio.title}\nLink: ${annuncio.url}\nText: ${annuncio.content}`;
 
-    const content = await chatOllama(
-      [
+    const content = await chatOllama({
+      baseUrl: DEEPSEEK_OLLAMA_URL,
+      model: ANALYSIS_MODEL,
+      messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
       ],
       // balance between creative cover letter writing and precise match scoring
-      { temperature: 0.3, maxTokens: 1000 },
-    );
+      temperature: 0.3,
+      maxTokens: 1000,
+    });
 
     return content || 'Unable to generate the analysis for this listing.';
 
