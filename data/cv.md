@@ -21,7 +21,7 @@ deploy, vercel
 * **HundredPath (Node.js, Vue.js):** Logic game interattivo basato su matematica e strategia con percorsi numerici e progressione di difficoltà.
 * **Green Eats (React.js):** Sito di ricette vegetariane che integra API esterne per una ricerca fluida.
 * **Tic Tac Vue (Vue.js):** Versione interattiva del classico Tic Tac Toe con logica di gioco completa.
-* **Italy Job Hunter (Node.js, Telegram Bot):** Agente AI che automatizza la ricerca di lavoro in Italia. Scansiona annunci ogni mattina, li filtra con LLaMA e li analizza con DeepSeek rispetto al CV, inviando il report su Telegram.
+* **Italy Job Hunter (Node.js, Telegram Bot):** Agente AI che automatizza la ricerca di lavoro in Italia. Scansiona annunci ogni mattina, li filtra e li analizza con un modello locale (qwen2.5:3b-instruct via Ollama) rispetto al CV, inviando il report su Telegram.
 
 ## Esperienza Professionale
 ### 1999 - 2025 | Operativo & Commerciale nella GDO

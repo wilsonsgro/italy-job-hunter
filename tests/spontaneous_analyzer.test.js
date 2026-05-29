@@ -14,36 +14,27 @@ const mockAzienda = {
 
 describe('analizzaPerCandidaturaSpontanea', () => {
   beforeEach(() => {
-    process.env.DEEPSEEK_API_KEY = 'test-key';
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.readFileSync).mockReturnValue('# My CV');
   });
 
   afterEach(() => {
-    delete process.env.DEEPSEEK_API_KEY;
     vi.restoreAllMocks();
   });
 
   it('returns the pitch string on success', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: 'Pitch content here' } }] }),
+      json: async () => ({ message: { content: 'Pitch content here' } }),
     }));
     const result = await analizzaPerCandidaturaSpontanea(mockAzienda);
     expect(result).toBe('Pitch content here');
   });
 
-  it('returns error string when API key is missing', async () => {
-    delete process.env.DEEPSEEK_API_KEY;
-    const result = await analizzaPerCandidaturaSpontanea(mockAzienda);
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  it('returns error string when choices is missing from response without throwing', async () => {
+  it('returns error string when content is missing from response without throwing', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ error: 'quota exceeded' }),
+      json: async () => ({ error: 'model not found' }),
     }));
     const result = await analizzaPerCandidaturaSpontanea(mockAzienda);
     expect(typeof result).toBe('string');
@@ -54,6 +45,7 @@ describe('analizzaPerCandidaturaSpontanea', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
+      text: async () => 'Internal Server Error',
     }));
     const result = await analizzaPerCandidaturaSpontanea(mockAzienda);
     expect(typeof result).toBe('string');

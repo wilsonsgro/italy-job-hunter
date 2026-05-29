@@ -1,11 +1,11 @@
 import { cercaLavoriItalia } from './src/search_engine.js';
 import { eseguiTriage } from './src/triage_filter.js';
-import { analizzaConDeepSeek } from './src/deepseek_analyzer.js';
+import { analizzaConOllama } from './src/ollama_analyzer.js';
 import { inviaATelegram } from './src/telegram_sender.js';
 import { loadSeen, saveSeen } from './src/seen_store.js';
 import { API_DELAY_MS, TELEGRAM_MAX_CHARS, MIN_MATCH_SCORE } from './src/config.js';
 
-/** Extracts the numeric match score from a DeepSeek report string. Returns null if not found. */
+/** Extracts the numeric match score from the analysis report string. Returns null if not found. */
 function parseMatchScore(report) {
   const match = report.match(/MATCH SCORE[^:]*:\s*(\d+)%/i);
   return match ? parseInt(match[1], 10) : null;
@@ -39,7 +39,7 @@ async function runHunter() {
   }
 
   console.log('-----------------------------------------------------');
-  console.log('🧠 [STAGE 2] Triage with Groq + DeepSeek analysis...');
+  console.log('🧠 [STAGE 2] Triage + analysis with local qwen2.5:3b-instruct...');
 
   const approvedCards = [];
 
@@ -48,8 +48,8 @@ async function runHunter() {
 
     if (passed) {
       console.log(`🔥 [APPROVED] Match found: "${listing.title}"`);
-      console.log('🤖 [STAGE 3] Generating analysis with DeepSeek-V3...');
-      const report = await analizzaConDeepSeek(listing);
+      console.log('🤖 [STAGE 3] Generating analysis with qwen2.5:3b-instruct...');
+      const report = await analizzaConOllama(listing);
       const score = parseMatchScore(report);
 
       if (score !== null && score < MIN_MATCH_SCORE) {

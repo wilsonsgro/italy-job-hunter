@@ -1,23 +1,15 @@
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
-import { ANALYSIS_MODEL } from './config.js';
-dotenv.config();
+import { chatOllama } from './ollama_client.js';
 
 /**
  * Generates a spontaneous application strategy and cold-outreach pitch for a target company.
- * Reads the local CV and uses DeepSeek to craft a tailored message.
+ * Reads the local CV and uses the local Ollama model to craft a tailored message.
  *
  * @param {{ name: string, url: string, content: string }} azienda
  * @returns {Promise<string>} formatted pitch report, or an error string on failure
  */
 export async function analizzaPerCandidaturaSpontanea(azienda) {
-  const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
-  if (!apiKey) {
-    console.error('❌ Error: DEEPSEEK_API_KEY not configured.');
-    return 'Analysis unavailable.';
-  }
-
   const cvPath = path.join(process.cwd(), 'data', 'cv.md');
   let cvContesto = '';
 
@@ -55,33 +47,20 @@ export async function analizzaPerCandidaturaSpontanea(azienda) {
   `;
 
   try {
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: ANALYSIS_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          {
-            role: 'user',
-            content: `Analyze this company for a spontaneous application:\nName/Site: ${azienda.name} (${azienda.url})\nContext: ${azienda.content}`,
-          },
-        ],
-        temperature: 0.3,
-      }),
-    });
+    const content = await chatOllama(
+      [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `Analyze this company for a spontaneous application:\nName/Site: ${azienda.name} (${azienda.url})\nContext: ${azienda.content}`,
+        },
+      ],
+      { temperature: 0.3, maxTokens: 1000 },
+    );
 
-    if (!response.ok) {
-      throw new Error(`DeepSeek API Error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content ?? 'Analysis unavailable.';
+    return content || 'Analysis unavailable.';
   } catch (error) {
-    console.error('❌ DeepSeek Spontaneous Error:', error.message);
+    console.error('❌ Ollama Spontaneous Error:', error.message);
     return 'Error generating pitch.';
   }
 }

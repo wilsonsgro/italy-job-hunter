@@ -18,11 +18,11 @@ Two independent pipelines, both running fully automated:
 Tavily (web search)
        │
        ▼
-Groq / llama-3.1-8b-instant
+qwen2.5:3b-instruct
 (boolean triage — YES / NO)
        │ YES
        ▼
-DeepSeek-V3
+qwen2.5:3b-instruct
 (CV match analysis + recruiter hook)
        │
        ▼
@@ -30,31 +30,31 @@ Telegram Bot
 (formatted report)
 ```
 
-Each model is assigned the task it handles best: Groq for fast, cheap boolean classification — DeepSeek for deep reasoning and personalization. No single model does everything.
+Both analysis stages run on a single local model — `qwen2.5:3b-instruct` served by Ollama. Triage and CV matching are two separate services hitting the same self-hosted model: no external API keys, no per-call cost, full data privacy.
 
 ---
 
-## Why Multi-Model
+## Why Local Model
 
-A single LLM for the entire pipeline is expensive and slow. This architecture uses:
+Running the pipeline on a self-hosted `qwen2.5:3b-instruct` (via Ollama) keeps the whole workflow local:
 
-- **Groq/llama-3.1-8b-instant** for triage — inference in milliseconds, near-zero cost, perfect for a binary yes/no filter
-- **DeepSeek-V3** for analysis — high reasoning quality at a fraction of GPT-4 pricing, handles nuanced CV matching
+- **Triage** — a cheap boolean yes/no filter that discards off-target listings before any deep analysis
+- **Analysis** — CV matching and recruiter-hook generation on the same model, reusing the loaded weights
 
-The result: processing 20 job listings costs less than a cent and completes in under 30 seconds.
+The result: zero API cost, no rate limits, and no listing or CV data leaving the machine. A small 3B model is more than enough for boolean triage and structured CV reports, and runs comfortably on a single consumer GPU.
 
 ---
 
 ## Prerequisites
 
 - **Node.js 18** or higher
-- API keys for the following services (all have free or very cheap tiers):
+- A running **[Ollama](https://ollama.com)** instance with the `qwen2.5:3b-instruct` model pulled (the bundled Docker setup provisions this automatically)
+- API keys for the following services:
 
 | Service | Purpose | Cost |
 |---|---|---|
 | [Tavily](https://tavily.com) | Web search | Free tier available |
-| [Groq](https://console.groq.com) | Boolean triage | Free |
-| [DeepSeek](https://platform.deepseek.com) | CV analysis | Pay-as-you-go, very cheap |
+| [Ollama](https://ollama.com) | Triage + CV analysis (local `qwen2.5:3b-instruct`) | Free / self-hosted |
 | [Telegram Bot](https://core.telegram.org/bots#botfather) | Delivery | Free |
 
 ---
@@ -103,8 +103,8 @@ npm test
 | `TELEGRAM_BOT_TOKEN` | Your bot token from [@BotFather](https://t.me/botfather) |
 | `TELEGRAM_CHAT_ID` | Your personal chat ID (use [@userinfobot](https://t.me/userinfobot)) |
 | `TAVILY_API_KEY` | Tavily API key |
-| `GROQ_API_KEY` | Groq API key |
-| `DEEPSEEK_API_KEY` | DeepSeek API key |
+| `OLLAMA_BASE_URL` | Ollama server URL (default `http://job-hunter-ollama:11434`) |
+| `OLLAMA_MODEL` | Local model name (default `qwen2.5:3b-instruct`) |
 
 ### Search constants (`src/config.js`)
 
@@ -116,9 +116,11 @@ All search queries, model names, and tuning parameters live in `src/config.js`. 
 | `SEARCH_MAX_RESULTS` | `20` | Max raw results per hunt run |
 | `SCOUT_QUERY` | *(see file)* | Tavily query for company scouting |
 | `SCOUT_MAX_RESULTS` | `6` | Max companies per scouting session |
-| `TRIAGE_MODEL` | `llama-3.1-8b-instant` | Groq model for boolean filtering |
-| `ANALYSIS_MODEL` | `deepseek-chat` | DeepSeek model for CV analysis |
-| `API_DELAY_MS` | `2500` | Delay between calls (rate limit safety) |
+| `OLLAMA_BASE_URL` | `http://job-hunter-ollama:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `qwen2.5:3b-instruct` | Local model used for triage and analysis |
+| `TRIAGE_MODEL` | = `OLLAMA_MODEL` | Model for boolean filtering |
+| `ANALYSIS_MODEL` | = `OLLAMA_MODEL` | Model for CV analysis |
+| `API_DELAY_MS` | `2500` | Delay between calls (serializes the single local instance) |
 | `TELEGRAM_MAX_CHARS` | `4000` | Message chunk size (Telegram limit: 4096) |
 
 ### CV (`data/cv.md`)
@@ -135,13 +137,14 @@ italy-job-hunter/
 │   └── cv.md                     Your CV in Markdown format
 ├── src/
 │   ├── config.js                 Centralized constants — queries, models, limits
+│   ├── ollama_client.js          Shared HTTP client for the local Ollama model
 │   ├── seen_store.js             Deduplication cache — no duplicate results
 │   ├── search_engine.js          Stage 1: web search via Tavily
-│   ├── triage_filter.js          Stage 2: boolean AI filter via Groq
-│   ├── deepseek_analyzer.js      Stage 3: CV match analysis via DeepSeek
+│   ├── triage_filter.js          Stage 2: boolean AI filter via Ollama
+│   ├── ollama_analyzer.js        Stage 3: CV match analysis via Ollama
 │   ├── telegram_sender.js        Stage 4: formatted delivery via Telegram
 │   ├── company_scouter.js        Scout: finds target companies via Tavily
-│   └── spontaneous_analyzer.js   Scout: generates cold-outreach pitches via DeepSeek
+│   └── spontaneous_analyzer.js   Scout: generates cold-outreach pitches via Ollama
 ├── tests/                        Vitest test suite — runs fully offline, no API calls
 ├── index.js                      Hunt mode orchestrator
 ├── scouting.js                   Scout mode orchestrator
@@ -155,8 +158,7 @@ italy-job-hunter/
 | Tool | Purpose | Why |
 |---|---|---|
 | [Tavily](https://tavily.com) | Web search | Purpose-built for AI agents; returns clean, structured content |
-| [Groq](https://console.groq.com) | Triage filter | Fastest inference available — ideal for high-volume boolean classification |
-| [DeepSeek-V3](https://platform.deepseek.com) | CV analysis | High reasoning quality at a fraction of GPT-4 pricing |
+| [Ollama](https://ollama.com) + qwen2.5:3b-instruct | Triage + CV analysis | Self-hosted, zero cost, private; a 3B model is enough for triage and structured reports |
 | [Telegram Bot API](https://core.telegram.org/bots/api) | Delivery | Instant push notifications, zero UI to build or maintain |
 | [Vitest](https://vitest.dev) | Testing | Native ESM support, zero config |
 
@@ -168,7 +170,7 @@ The pipeline is not Italy-specific. To use it for a different market or tech sta
 
 1. Edit `SEARCH_QUERY` and `SCOUT_QUERY` in `src/config.js`
 2. Replace `data/cv.md` with your own CV
-3. Swap model names if you prefer different providers — the interfaces are modular
+3. Point `OLLAMA_MODEL` at any other Ollama model (or `OLLAMA_BASE_URL` at a remote Ollama) — the interfaces are modular
 
 The core pipeline logic does not need to change.
 

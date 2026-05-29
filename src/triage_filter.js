@@ -1,23 +1,14 @@
-import dotenv from 'dotenv';
-import { TRIAGE_MODEL } from './config.js';
-dotenv.config();
+import { chatOllama } from './ollama_client.js';
 
 /**
- * Runs a boolean triage on a single job listing using Groq.
- * Sends the listing to a fast LLM that responds only "SI" or "NO" based on whether
- * it matches the Italian market and the target tech stack.
+ * Runs a boolean triage on a single job listing using the local Ollama model.
+ * Sends the listing to qwen2.5:3b-instruct, which responds only "SI" or "NO"
+ * based on whether it matches the Italian market and the target tech stack.
  *
  * @param {{ title: string, content: string }} annuncio
  * @returns {Promise<boolean>} true if the listing passes the filter, false otherwise
  */
 export async function eseguiTriage(annuncio) {
-  const apiKey = process.env.GROQ_API_KEY;
-
-  if (!apiKey) {
-    console.error('❌ Error: GROQ_API_KEY not configured in .env');
-    return false;
-  }
-
   const systemPrompt = `You are a ruthless boolean logic filter for job listings.
 Your ONLY job is to respond "SI" or "NO". Do not add explanations, greetings, or punctuation.
 
@@ -38,56 +29,30 @@ If the listing is NOT valid respond: NO`;
   const userContent = `Title: ${annuncio.title}\nJob listing text: ${annuncio.content}`;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: TRIAGE_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent },
-        ],
-        // temperature 0 ensures deterministic boolean output
-        temperature: 0.0,
-        // Only "SI" or "NO" expected; 5 tokens is more than sufficient
-        max_tokens: 5,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const detail = errorData.error?.message || response.statusText;
-      throw new Error(`Groq API Error: ${response.status} - ${detail}`);
-    }
-
-    const data = await response.json();
-    const clean = data.choices[0].message.content.trim().toUpperCase();
-    return clean.includes('SI');
+    const content = await chatOllama(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+      ],
+      // temperature 0 for deterministic output; only "SI"/"NO" expected
+      { temperature: 0.0, maxTokens: 5 },
+    );
+    return content.trim().toUpperCase().includes('SI');
 
   } catch (error) {
-    console.error('❌ Error during Groq triage:', error.message);
+    console.error('❌ Error during Ollama triage:', error.message);
     return false;
   }
 }
 
 /**
  * Checks whether a scouted company is based in Italy.
- * Rejects foreign companies before spending a DeepSeek call on them.
+ * Rejects foreign companies before spending an analysis call on them.
  *
  * @param {{ name: string, url: string, content: string }} azienda
  * @returns {Promise<boolean>} true if the company appears to be Italian, false otherwise
  */
 export async function eseguiTriageAzienda(azienda) {
-  const apiKey = process.env.GROQ_API_KEY;
-
-  if (!apiKey) {
-    console.error('❌ Error: GROQ_API_KEY not configured in .env');
-    return false;
-  }
-
   const systemPrompt = `You are a boolean filter. Respond only "SI" or "NO". No explanations.
 
 Respond "SI" if the company is based in Italy or operates primarily in the Italian market.
@@ -96,31 +61,14 @@ Respond "NO" if the company is foreign (USA, UK, India, etc.) with no clear Ital
   const userContent = `Company: ${azienda.name}\nURL: ${azienda.url}\nDescription: ${azienda.content}`;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: TRIAGE_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent },
-        ],
-        temperature: 0.0,
-        max_tokens: 5,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Groq API Error: ${response.status} - ${errorData.error?.message || response.statusText}`);
-    }
-
-    const data = await response.json();
-    const clean = data.choices[0].message.content.trim().toUpperCase();
-    return clean.includes('SI');
+    const content = await chatOllama(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userContent },
+      ],
+      { temperature: 0.0, maxTokens: 5 },
+    );
+    return content.trim().toUpperCase().includes('SI');
 
   } catch (error) {
     console.error('❌ Error during company triage:', error.message);

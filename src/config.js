@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 /** Tavily search query for Full Stack job listings in Italy. */
 export const SEARCH_QUERY =
   '"Full Stack Developer" (Vue.js OR Nuxt) Node.js (Italia OR remoto) ("offerte di lavoro" OR "assunzione" OR "candidati")';
@@ -12,15 +15,21 @@ export const SCOUT_QUERY =
 /** Maximum number of companies to fetch per scouting run. */
 export const SCOUT_MAX_RESULTS = 6;
 
-/** Groq model used for the boolean triage filter. */
-export const TRIAGE_MODEL = 'llama-3.1-8b-instant';
+/** Base URL of the local Ollama server. Override with OLLAMA_BASE_URL in .env. */
+export const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://job-hunter-ollama:11434';
 
-/** DeepSeek model used for CV match analysis and pitch generation. */
-export const ANALYSIS_MODEL = 'deepseek-chat';
+/** Local Ollama model used for both triage and analysis. */
+export const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b-instruct';
+
+/** Model used for the boolean triage filter (local Ollama). */
+export const TRIAGE_MODEL = OLLAMA_MODEL;
+
+/** Model used for CV match analysis and pitch generation (local Ollama). */
+export const ANALYSIS_MODEL = OLLAMA_MODEL;
 
 /**
- * Delay in milliseconds between consecutive API calls.
- * Prevents hitting rate limits on Groq and DeepSeek free/low-cost tiers.
+ * Delay in milliseconds between consecutive model calls.
+ * Serializes requests to the single local Ollama instance (OLLAMA_NUM_PARALLEL=1).
  */
 export const API_DELAY_MS = 2500;
 
@@ -32,6 +41,6 @@ export const TELEGRAM_MAX_CHARS = 4000;
 
 /**
  * Minimum match score (0–100) required to include a listing in the Telegram report.
- * Listings analysed by DeepSeek but scoring below this threshold are silently dropped.
+ * Listings analysed by the model but scoring below this threshold are silently dropped.
  */
 export const MIN_MATCH_SCORE = 65;
