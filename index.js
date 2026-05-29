@@ -5,9 +5,12 @@ import { inviaATelegram } from './src/telegram_sender.js';
 import { loadSeen, saveSeen } from './src/seen_store.js';
 import { API_DELAY_MS, TELEGRAM_MAX_CHARS, MIN_MATCH_SCORE } from './src/config.js';
 
-/** Extracts the numeric match score from the analysis report string. Returns null if not found. */
+/**
+ * Extracts the numeric match score from the analysis report string. Returns null if not found.
+ * Tolerant of the formats the local model emits: "80%", "[80]", "[80]%" or a bare "80".
+ */
 function parseMatchScore(report) {
-  const match = report.match(/MATCH SCORE[^:]*:\s*(\d+)%/i);
+  const match = report.match(/MATCH SCORE[^:]*:\s*\[?\s*(\d+)\s*\]?\s*%?/i);
   return match ? parseInt(match[1], 10) : null;
 }
 
