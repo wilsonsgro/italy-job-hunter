@@ -9,7 +9,7 @@ COPY ./ollamagroq/Modelfile /tmp/Modelfile
 RUN /bin/ollama serve & \
     OLLAMA_PID=$! && \
     for _ in $(seq 1 60); do \
-      curl -fsS "http://127.0.0.1:11434/api/tags" >/dev/null 2>&1 && break; \
+      curl -fsS "http://127.0.0.1:11435/api/tags" >/dev/null 2>&1 && break; \
       sleep 2; \
     done && \
     ollama pull qwen2.5:3b-instruct && \
