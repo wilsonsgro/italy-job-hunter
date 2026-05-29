@@ -1,3 +1,4 @@
+import http from 'node:http';
 import { cercaLavoriItalia } from './src/search_engine.js';
 import { eseguiTriage } from './src/triage_filter.js';
 import { analizzaConOllama } from './src/ollama_analyzer.js';
@@ -15,6 +16,21 @@ function parseMatchScore(report) {
 }
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const cliArgs = new Set(process.argv.slice(2));
+const isOneShotMode = cliArgs.has('--once');
+const hunterHost = process.env.HUNTER_HOST || '0.0.0.0';
+const hunterPort = Number.parseInt(process.env.HUNTER_PORT || '3000', 10);
+const runOnStartup = (process.env.HUNTER_RUN_ON_STARTUP || 'true').toLowerCase() !== 'false';
+const hunterIntervalMs = Number.parseInt(process.env.HUNTER_INTERVAL_MS || '0', 10);
+
+let activeRunPromise = null;
+const runState = {
+  status: 'idle',
+  source: null,
+  lastStartedAt: null,
+  lastFinishedAt: null,
+  lastError: null
+};
 
 async function runHunter() {
   console.log('=====================================================');
@@ -125,4 +141,103 @@ async function runHunter() {
   console.log('=====================================================');
 }
 
-runHunter();
+async function triggerHunter(source = 'manual') {
+  if (activeRunPromise) {
+    return activeRunPromise;
+  }
+
+  runState.status = 'running';
+  runState.source = source;
+  runState.lastStartedAt = new Date().toISOString();
+  runState.lastError = null;
+
+  activeRunPromise = runHunter()
+    .then(() => {
+      runState.status = 'idle';
+    })
+    .catch((error) => {
+      runState.status = 'error';
+      runState.lastError = error instanceof Error ? error.message : String(error);
+      console.error('❌ Hunter run failed:', error);
+    })
+    .finally(() => {
+      runState.lastFinishedAt = new Date().toISOString();
+      activeRunPromise = null;
+    });
+
+  return activeRunPromise;
+}
+
+function sendJson(res, statusCode, payload) {
+  res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(payload));
+}
+
+function startHunterServer() {
+  const server = http.createServer((req, res) => {
+    if (!req.url) {
+      sendJson(res, 400, { ok: false, error: 'Missing request URL.' });
+      return;
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+      sendJson(res, 200, {
+        ok: true,
+        service: 'italy-job-hunter',
+        pid: process.pid,
+        uptimeSeconds: Math.round(process.uptime()),
+        runState: {
+          ...runState,
+          isRunning: Boolean(activeRunPromise)
+        }
+      });
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/run') {
+      if (activeRunPromise) {
+        sendJson(res, 409, { ok: false, error: 'Hunter is already running.', runState });
+        return;
+      }
+
+      triggerHunter('http').catch(() => {});
+      sendJson(res, 202, { ok: true, message: 'Hunter run started.', runState });
+      return;
+    }
+
+    sendJson(res, 404, { ok: false, error: 'Not found.' });
+  });
+
+  server.listen(hunterPort, hunterHost, () => {
+    console.log(`🌐 Hunter server listening on http://${hunterHost}:${hunterPort}`);
+  });
+
+  if (runOnStartup) {
+    triggerHunter('startup').catch(() => {});
+  }
+
+  if (Number.isFinite(hunterIntervalMs) && hunterIntervalMs > 0) {
+    console.log(`⏱️  Scheduled hunter run every ${hunterIntervalMs} ms.`);
+    setInterval(() => {
+      if (!activeRunPromise) {
+        triggerHunter('interval').catch(() => {});
+      }
+    }, hunterIntervalMs);
+  }
+}
+
+if (isOneShotMode) {
+  triggerHunter('cli-once')
+    .then(() => {
+      if (runState.status === 'error') {
+        process.exitCode = 1;
+      }
+    })
+    .catch(() => {
+      process.exitCode = 1;
+    });
+} else {
+  startHunterServer();
+}

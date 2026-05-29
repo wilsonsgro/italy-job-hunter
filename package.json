@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "run:once": "node index.js --once",
     "scout": "node scouting.js",
     "bot": "node bot.js",
     "test": "vitest run"
