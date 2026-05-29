@@ -26,7 +26,10 @@ services:
     restart: unless-stopped
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_KEEP_ALIVE: 10m
+      # 0 = unload the model right after each request. On a 3 GB GPU this keeps the two
+      # models (groq + deepseek) from being resident at once, so each runs 100% on GPU
+      # instead of spilling to CPU. Trade-off: a model reload between phases.
+      OLLAMA_KEEP_ALIVE: 0
       OLLAMA_NUM_PARALLEL: 1
       OLLAMA_MAX_LOADED_MODELS: 1
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct}
@@ -58,7 +61,10 @@ services:
     restart: unless-stopped
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_KEEP_ALIVE: 10m
+      # 0 = unload the model right after each request. On a 3 GB GPU this keeps the two
+      # models (groq + deepseek) from being resident at once, so each runs 100% on GPU
+      # instead of spilling to CPU. Trade-off: a model reload between phases.
+      OLLAMA_KEEP_ALIVE: 0
       OLLAMA_NUM_PARALLEL: 1
       OLLAMA_MAX_LOADED_MODELS: 1
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct}
@@ -80,6 +86,17 @@ services:
         ipv4_address: 172.24.0.7
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  dozzlejob:
+    container_name: dozzlejob
+    image: amir20/dozzle:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8087:8080"
+    networks:
+      netjob:
+        ipv4_address: 172.24.0.17
 
 networks:
   netjob:

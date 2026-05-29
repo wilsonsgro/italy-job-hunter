@@ -20,23 +20,34 @@ async function runScouting() {
     return;
   }
 
-  const pitchCards = [];
+  // Run as two batches (all triage, then all analysis) so only one model is resident
+  // per phase — one swap between groq-ollama and deepseek-ollama instead of per company.
+
+  // Triage every company on groq-ollama
+  console.log(`🧭 Triaging ${companies.length} company(ies) with groq-ollama...`);
+  const italianCompanies = [];
 
   for (const company of companies) {
     const isItalian = await eseguiTriageAzienda(company);
-    if (!isItalian) {
+    if (isItalian) {
+      italianCompanies.push(company);
+    } else {
       console.log(`❌ [REJECTED] "${company.name}" — not an Italian company.`);
-      await wait(API_DELAY_MS);
-      continue;
     }
+    await wait(API_DELAY_MS);
+  }
 
+  // Generate a pitch for each Italian company on deepseek-ollama
+  console.log(`✍️  Generating ${italianCompanies.length} pitch(es) with deepseek-ollama...`);
+  const pitchCards = [];
+
+  for (const company of italianCompanies) {
     console.log(`\n🏢 Analyzing positioning for: "${company.name}"...`);
     const report = await analizzaPerCandidaturaSpontanea(company);
 
     const card = `🏢 <b>COMPANY: ${company.name.toUpperCase()}</b>\n🌐 <a href="${company.url}">Visit website</a>\n\n${report}`;
     pitchCards.push(card);
 
-    // Courtesy delay to avoid hitting API rate limits
     await wait(API_DELAY_MS);
   }
 

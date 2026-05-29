@@ -41,37 +41,54 @@ async function runHunter() {
     return;
   }
 
-  console.log('-----------------------------------------------------');
-  console.log('🧠 [STAGE 2] Triage (groq-ollama) + analysis (deepseek-ollama)...');
+  // The two stages run as separate batches (all triage, then all analysis) instead of
+  // interleaving per listing. This keeps a single model resident per phase: on a small
+  // GPU only one of groq-ollama / deepseek-ollama is loaded at a time, with one swap
+  // between phases rather than a reload on every listing.
 
-  const approvedCards = [];
+  // Stage 2: triage every new listing on groq-ollama
+  console.log('-----------------------------------------------------');
+  console.log(`🧠 [STAGE 2] Triage ${newListings.length} listing(s) with groq-ollama...`);
+
+  const approvedListings = [];
 
   for (const listing of newListings) {
     const passed = await eseguiTriage(listing);
 
     if (passed) {
       console.log(`🔥 [APPROVED] Match found: "${listing.title}"`);
-      console.log('🤖 [STAGE 3] Generating analysis with deepseek-ollama...');
-      const report = await analizzaConOllama(listing);
-      const score = parseMatchScore(report);
-
-      if (score !== null && score < MIN_MATCH_SCORE) {
-        console.log(`📉 [FILTERED] "${listing.title}" — score ${score}% below threshold (${MIN_MATCH_SCORE}%).`);
-      } else {
-        const card = `💼 <b>${listing.title.toUpperCase()}</b>\n\n${report}\n\n🔗 <a href="${listing.url}">View original listing</a>`;
-        approvedCards.push(card);
-      }
+      approvedListings.push(listing);
     } else {
       console.log(`❌ [REJECTED] "${listing.title}" does not match.`);
     }
 
-    // Mark URL as seen and add courtesy delay to avoid hitting API rate limits
+    // Mark URL as seen and add courtesy delay between calls
     seen.add(listing.url);
     await wait(API_DELAY_MS);
   }
 
-  // Persist the updated seen set before sending notifications
+  // Persist the updated seen set before the (slower) analysis phase
   saveSeen(seen);
+
+  // Stage 3: analyze every approved listing on deepseek-ollama
+  console.log('-----------------------------------------------------');
+  console.log(`🤖 [STAGE 3] Analyzing ${approvedListings.length} match(es) with deepseek-ollama...`);
+
+  const approvedCards = [];
+
+  for (const listing of approvedListings) {
+    const report = await analizzaConOllama(listing);
+    const score = parseMatchScore(report);
+
+    if (score !== null && score < MIN_MATCH_SCORE) {
+      console.log(`📉 [FILTERED] "${listing.title}" — score ${score}% below threshold (${MIN_MATCH_SCORE}%).`);
+    } else {
+      const card = `💼 <b>${listing.title.toUpperCase()}</b>\n\n${report}\n\n🔗 <a href="${listing.url}">View original listing</a>`;
+      approvedCards.push(card);
+    }
+
+    await wait(API_DELAY_MS);
+  }
 
   // Stage 4: send accumulated report to Telegram
   console.log('-----------------------------------------------------');
