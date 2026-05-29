@@ -88,6 +88,9 @@ cp .env.example .env
 ## Usage
 
 ```bash
+docker compose up -d
+
+docker compose exec run sh
 # Find job listings and send match reports to Telegram
 npm start
 
@@ -109,7 +112,7 @@ npm test
 | `TELEGRAM_BOT_TOKEN` | Your bot token from [@BotFather](https://t.me/botfather) |
 | `TELEGRAM_CHAT_ID` | Your personal chat ID (use [@userinfobot](https://t.me/userinfobot)) |
 | `TAVILY_API_KEY` | Tavily API key |
-| `GROQ_OLLAMA_URL` | Triage service URL (default `http://groq-ollama:11434`) |
+| `GROQ_OLLAMA_URL` | Triage service URL (default `http://groq-ollama:11435`) |
 | `DEEPSEEK_OLLAMA_URL` | Analysis service URL (default `http://deepseek-ollama:11434`) |
 | `TRIAGE_MODEL` | Triage model name (default `ollama-groq`) |
 | `ANALYSIS_MODEL` | Analysis model name (default `ollama-deepseek`) |
@@ -125,7 +128,7 @@ All search queries, model names, and tuning parameters live in `src/config.js`. 
 | `SEARCH_MAX_RESULTS` | `20` | Max raw results per hunt run |
 | `SCOUT_QUERY` | *(see file)* | Tavily query for company scouting |
 | `SCOUT_MAX_RESULTS` | `6` | Max companies per scouting session |
-| `GROQ_OLLAMA_URL` | `http://groq-ollama:11434` | Triage service base URL |
+| `GROQ_OLLAMA_URL` | `http://groq-ollama:11435` | Triage service base URL |
 | `DEEPSEEK_OLLAMA_URL` | `http://deepseek-ollama:11434` | Analysis service base URL |
 | `TRIAGE_MODEL` | `ollama-groq` | Specialized model for boolean filtering |
 | `ANALYSIS_MODEL` | `ollama-deepseek` | Specialized model for CV analysis |
