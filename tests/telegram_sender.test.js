@@ -31,6 +31,7 @@ describe('inviaATelegram', () => {
   beforeEach(() => {
     process.env.TELEGRAM_BOT_TOKEN = 'test-token';
     process.env.TELEGRAM_CHAT_ID = '12345';
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {

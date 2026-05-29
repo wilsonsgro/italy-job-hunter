@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { eseguiTriage } from '../src/triage_filter.js';
 
 vi.mock('dotenv', () => ({ default: { config: vi.fn() } }));
@@ -16,6 +16,10 @@ const ollamaResponse = (content) => ({
 describe('eseguiTriage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('returns true when Ollama responds with "SI"', async () => {

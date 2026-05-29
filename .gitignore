@@ -1,3 +1,4 @@
 .env
 node_modules/
+.vitest-cache/
 data/seen_urls.json

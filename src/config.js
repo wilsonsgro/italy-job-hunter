@@ -16,7 +16,7 @@ export const SCOUT_QUERY =
 export const SCOUT_MAX_RESULTS = 6;
 
 /** Base URL of the groq-ollama service — local model dedicated to boolean triage. */
-export const GROQ_OLLAMA_URL = process.env.GROQ_OLLAMA_URL || 'http://groq-ollama:11434';
+export const GROQ_OLLAMA_URL = process.env.GROQ_OLLAMA_URL || 'http://groq-ollama:11435';
 
 /** Base URL of the deepseek-ollama service — local model dedicated to CV analysis. */
 export const DEEPSEEK_OLLAMA_URL = process.env.DEEPSEEK_OLLAMA_URL || 'http://deepseek-ollama:11434';

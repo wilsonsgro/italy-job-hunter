@@ -15,6 +15,7 @@ const mockAnnuncio = {
 describe('analizzaConOllama', () => {
   beforeEach(() => {
     vi.mocked(fs.readFileSync).mockReturnValue('# My CV\n## Skills\nNode.js, Vue.js');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
